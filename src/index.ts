@@ -8,14 +8,21 @@ import * as fs from "fs/promises";
 
 const main = async () => {
     const files = core.getMultilineInput("files");
-    const checkUtf8 = core.getBooleanInput("check_utf8");
+    const assertUtf8 = core.getBooleanInput("assert_utf8");
+    const assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
 
     let errors = false;
-    if (checkUtf8) {
+    if (assertUtf8) {
         core.startGroup("Make sure files are encoded as UTF-8");
-        errors ||= await forAllFiles(files, checkSingleUtf8) === "error";
+        errors ||= await forAllFiles(files, checkUtf8) === "error";
         core.endGroup();
     }
+    if (assertSingleTrailingNewline) {
+        core.startGroup("Make sure files end in a single trailing newline");
+        errors ||= await forAllFiles(files, checkSingleTrailingNewline) === "error";
+        core.endGroup();
+    }
+
 
     if (errors) {
         core.setFailed("Some problems were found");
@@ -55,7 +62,7 @@ const forAllFiles = async (files: string[], f: SingleCheck): Promise<Outcome> =>
 
 // ====== Individual checks ======================================================================
 
-const checkSingleUtf8 = (path: string, buf: Buffer): Outcome => {
+const checkUtf8 = (path: string, buf: Buffer): Outcome => {
     if (!isUtf8(buf)) {
         core.error(
             `File '${path}' is not encoded as UTF-8`,
@@ -63,6 +70,31 @@ const checkSingleUtf8 = (path: string, buf: Buffer): Outcome => {
         );
         return "error";
     }
+
+    return "ok";
+};
+
+const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
+    const newline = "\n".charCodeAt(0);
+    const lastTwo = [...buf.subarray(buf.buffer.byteLength - 2)];
+    const numNewlines = [...buf].filter(c => c === newline).length;
+    if (lastTwo[1] !== newline) {
+        core.error(
+            `File '${path}' does not end with a newline`,
+            { file: path, title: "Missing trailing newline", startLine: numNewlines + 1 },
+        );
+        return "error";
+    }
+
+    // We want a _single_ trailing newline
+    if (lastTwo[0] === newline) {
+        core.error(
+            `File '${path}' contains more than one trailing newline`,
+            { file: path, title: "Extra trailing newline", startLine: numNewlines + 1 },
+        );
+        return "error";
+    }
+
 
     return "ok";
 };

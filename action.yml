@@ -5,8 +5,12 @@ inputs:
   files:
     description: "List of files to check. Supports wildcards. If not set, defaults to checking TODO"
     required: false
-  check_utf8:
+  assert_utf8:
     description: "Make sure files are encoded as UTF-8"
+    required: false
+    default: "true"
+  assert_single_trailing_newline:
+    description: "Make sure files end with a single trailing newline"
     required: false
     default: "true"
 runs:
