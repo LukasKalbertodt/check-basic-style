@@ -11,6 +11,6 @@ jobs:
         uses: ./
         with:
           files: |
-            peter
-            lukas
-          check_utf8: true
+            *
+            src/*
+            .github/**
