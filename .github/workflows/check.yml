@@ -13,5 +13,5 @@ jobs:
       - name: Build
         run: npm run build:prod
       - name: Make sure `dist` is up to date
-        run: git diff --exit-code dist/
+        run: git diff --exit-code dist/ > /dev/null
 
