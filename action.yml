@@ -13,6 +13,11 @@ inputs:
     description: "Make sure files end with a single trailing newline"
     required: false
     default: "true"
+  assert_unix_line_endings:
+    description: "Make sure files use only '\\n' as line ending, erroring when '\\r' is found"
+    required: false
+    default: "true"
+
 runs:
   using: "node16"
   main: "dist/index.js"

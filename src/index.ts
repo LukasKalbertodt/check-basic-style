@@ -10,6 +10,7 @@ const main = async () => {
     const files = core.getMultilineInput("files");
     const assertUtf8 = core.getBooleanInput("assert_utf8");
     const assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
+    const assertUnixLineEndings = core.getBooleanInput("assert_unix_line_endings");
 
     let errors = false;
     if (assertUtf8) {
@@ -20,6 +21,11 @@ const main = async () => {
     if (assertSingleTrailingNewline) {
         core.startGroup("Make sure files end in a single trailing newline");
         errors ||= await forAllFiles(files, checkSingleTrailingNewline) === "error";
+        core.endGroup();
+    }
+    if (assertUnixLineEndings) {
+        core.startGroup("Make sure files use Unix file endings");
+        errors ||= await forAllFiles(files, checkUnixNewlines) === "error";
         core.endGroup();
     }
 
@@ -62,6 +68,8 @@ const forAllFiles = async (files: string[], f: SingleCheck): Promise<Outcome> =>
 
 // ====== Individual checks ======================================================================
 
+const NEWLINE_CHAR = "\n".charCodeAt(0);
+
 const checkUtf8 = (path: string, buf: Buffer): Outcome => {
     if (!isUtf8(buf)) {
         core.error(
@@ -75,10 +83,9 @@ const checkUtf8 = (path: string, buf: Buffer): Outcome => {
 };
 
 const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
-    const newline = "\n".charCodeAt(0);
     const lastTwo = [...buf.subarray(buf.buffer.byteLength - 2)];
-    const numNewlines = [...buf].filter(c => c === newline).length;
-    if (lastTwo[1] !== newline) {
+    const numNewlines = [...buf].filter(c => c === NEWLINE_CHAR).length;
+    if (lastTwo[1] !== NEWLINE_CHAR) {
         core.error(
             `File '${path}' does not end with a newline`,
             { file: path, title: "Missing trailing newline", startLine: numNewlines + 1 },
@@ -87,7 +94,7 @@ const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
     }
 
     // We want a _single_ trailing newline
-    if (lastTwo[0] === newline) {
+    if (lastTwo[0] === NEWLINE_CHAR) {
         core.error(
             `File '${path}' contains more than one trailing newline`,
             { file: path, title: "Extra trailing newline", startLine: numNewlines + 1 },
@@ -99,7 +106,19 @@ const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
     return "ok";
 };
 
+const checkUnixNewlines = (path: string, buf: Buffer): Outcome => {
+    const index = buf.indexOf("\r");
+    if (index !== -1) {
+        const line = [...buf.subarray(0, index)].filter(c => c === NEWLINE_CHAR).length + 1;
+        core.error(
+            `File '${path}' contains '\\r' character (should use Unix line endings instead)`,
+            { file: path, title: "'\\r' found", startLine: line },
+        );
+        return "error";
+    }
 
+    return "ok";
+};
 
 // ====== Calling entry point ====================================================================
 
