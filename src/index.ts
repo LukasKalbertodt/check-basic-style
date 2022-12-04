@@ -86,25 +86,30 @@ const checkUtf8 = (path: string, buf: Buffer): Outcome => {
 };
 
 const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
-    const lastTwo = [...buf.subarray(buf.buffer.byteLength - 2)];
-    const numNewlines = [...buf].filter(c => c === NEWLINE_CHAR).length;
-    if (lastTwo[1] !== NEWLINE_CHAR) {
+    // Empty files are allowed to have no newlines.
+    if (buf.length === 0) {
+        return "ok";
+    }
+
+    const numNewlines = () => [...buf].filter(c => c === NEWLINE_CHAR).length;
+    const lastChar = buf[buf.length - 1];
+    if (lastChar !== NEWLINE_CHAR) {
         core.error(
             `File '${path}' does not end with a newline`,
-            { file: path, title: "Missing trailing newline", startLine: numNewlines + 1 },
+            { file: path, title: "Missing trailing newline", startLine: numNewlines() + 1 },
         );
         return "error";
     }
 
-    // We want a _single_ trailing newline
-    if (lastTwo[0] === NEWLINE_CHAR) {
+    // We want a _single_ trailing newline, if there is more than one byte in
+    // this file.
+    if (buf.length > 1 && buf[buf.length - 2] === NEWLINE_CHAR) {
         core.error(
             `File '${path}' contains more than one trailing newline`,
-            { file: path, title: "Extra trailing newline", startLine: numNewlines + 1 },
+            { file: path, title: "Extra trailing newline", startLine: numNewlines() + 1 },
         );
         return "error";
     }
-
 
     return "ok";
 };
