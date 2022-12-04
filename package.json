@@ -1,0 +1,24 @@
+{
+  "name": "check-file-props",
+  "version": "1.0.0",
+  "private": true,
+  "author": "LukasKalbertodt",
+  "license": "MIT",
+
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --skipLibCheck --noEmit",
+    "watch:dev": "ncc build src/index.ts --watch",
+    "watch:prod": "ncc build src/index.ts --watch --minify --license licenses.txt",
+    "build:dev": "ncc build src/index.ts",
+    "build:prod": "ncc build src/index.ts --minify --license licenses.txt"
+  },
+
+  "dependencies": {
+    "@actions/core": "^1.10.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.34.0",
+    "typescript": "^4.9.3"
+  }
+}

@@ -1,0 +1,14 @@
+name: "Check basic file properties"
+description: "Check basic properties like files being UTF-8, a max line length,"
+author: "LukasKalbertodt"
+inputs:
+  files:
+    description: "List of files to check. Supports wildcards. If not set, defaults to checking TODO"
+    required: false
+  check_utf8:
+    description: "Make sure files are encoded as UTF-8"
+    required: false
+    default: "true"
+runs:
+  using: "node16"
+  main: "dist/index.js"
