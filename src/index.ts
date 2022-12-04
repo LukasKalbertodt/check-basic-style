@@ -13,25 +13,21 @@ const main = async () => {
     const assertUnixLineEndings = core.getBooleanInput("assert_unix_line_endings");
 
     let errors = false;
-    if (assertUtf8) {
-        core.startGroup("Make sure files are encoded as UTF-8");
-        const outcome = await forAllFiles(files, checkUtf8);
-        errors ||= outcome === "error";
-        core.endGroup();
-    }
-    if (assertSingleTrailingNewline) {
-        core.startGroup("Make sure files end in a single trailing newline");
-        const outcome = await forAllFiles(files, checkSingleTrailingNewline);
-        errors ||= outcome === "error";
-        core.endGroup();
-    }
-    if (assertUnixLineEndings) {
-        core.startGroup("Make sure files use Unix file endings");
-        const outcome = await forAllFiles(files, checkUnixNewlines);
-        errors ||= outcome === "error";
-        core.endGroup();
+    const runCheck = async (run: boolean, fn: SingleCheck, title: string) => {
+        if (run) {
+            core.startGroup(title);
+            const outcome = await forAllFiles(files, fn);
+            errors ||= outcome === "error";
+            core.endGroup();
+        }
     }
 
+    await runCheck(assertUtf8, checkUtf8,
+        "Make sure files are encoded as UTF-8");
+    await runCheck(assertSingleTrailingNewline, checkSingleTrailingNewline,
+        "Make sure files end in a single trailing newline");
+    await runCheck(assertUnixLineEndings, checkUnixNewlines,
+        "Make sure files use Unix file endings");
 
     if (errors) {
         core.setFailed("Some problems were found");
