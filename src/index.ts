@@ -15,17 +15,20 @@ const main = async () => {
     let errors = false;
     if (assertUtf8) {
         core.startGroup("Make sure files are encoded as UTF-8");
-        errors ||= await forAllFiles(files, checkUtf8) === "error";
+        const outcome = await forAllFiles(files, checkUtf8);
+        errors ||= outcome === "error";
         core.endGroup();
     }
     if (assertSingleTrailingNewline) {
         core.startGroup("Make sure files end in a single trailing newline");
-        errors ||= await forAllFiles(files, checkSingleTrailingNewline) === "error";
+        const outcome = await forAllFiles(files, checkSingleTrailingNewline);
+        errors ||= outcome === "error";
         core.endGroup();
     }
     if (assertUnixLineEndings) {
         core.startGroup("Make sure files use Unix file endings");
-        errors ||= await forAllFiles(files, checkUnixNewlines) === "error";
+        const outcome = await forAllFiles(files, checkUnixNewlines);
+        errors ||= outcome === "error";
         core.endGroup();
     }
 
