@@ -1,76 +1,57 @@
 import * as core from "@actions/core";
 import * as glob from "glob";
-import isUtf8 from "isutf8";
 import * as fs from "fs/promises";
 
 
 // ====== Main functions =========================================================================
 
 const main = async () => {
-    const files = core.getMultilineInput("files");
-    const assertUtf8 = core.getBooleanInput("assert_utf8");
-    const assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
-    const assertUnixLineEndings = core.getBooleanInput("assert_unix_line_endings");
+    const config = new Config();
 
-    let errors = false;
-    const runCheck = async (run: boolean, fn: SingleCheck, title: string) => {
-        if (run) {
-            core.startGroup(title);
-            const outcome = await forAllFiles(files, fn);
-            errors ||= outcome === "error";
-            core.endGroup();
-        }
-    }
-
-    await runCheck(assertUtf8, checkUtf8,
-        "Make sure files are encoded as UTF-8");
-    await runCheck(assertSingleTrailingNewline, checkSingleTrailingNewline,
-        "Make sure files end in a single trailing newline");
-    await runCheck(assertUnixLineEndings, checkUnixNewlines,
-        "Make sure files use Unix file endings");
-
-    if (errors) {
-        core.setFailed("Some problems were found");
-    }
-};
-
-type Outcome = "error" | "ok";
-type SingleCheck = (path: string, buf: Buffer) => Outcome;
-
-/**
- * Takes a list of glob patterns and runs the given function for all files
- * matching those patterns. Function is called only once for each unique
- * path.
- */
-const forAllFiles = async (files: string[], f: SingleCheck): Promise<Outcome> => {
     // Collect paths.
     const paths = new Set<string>();
-    for (const pattern of files) {
+    for (const pattern of config.files) {
         glob.sync(pattern, { nodir: true }).forEach(m => paths.add(m));
     }
 
     core.debug(`Will check these files: \n${Array.from(paths).map(p => `- ${p}`).join("\n")}`);
 
     // Run check for each path.
-    let outcome: Outcome = "ok";
+    let errors = false;
     for (const path of paths) {
-        const content = await fs.readFile(path);
-        const singleOutcome = f(path, content);
-        if (singleOutcome === "error") {
-            outcome = "error";
-        }
+        const outcome = await checkFile(path, config);
+        errors ||= outcome === "error";
     }
-    return outcome;
+
+    if (errors) {
+        core.setFailed("Some problems were found");
+    }
 };
 
+class Config {
+    files: string[];
+    assertSingleTrailingNewline: boolean;
+
+    constructor() {
+        this.files = core.getMultilineInput("files");
+        this.assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
+    }
+}
+
+type Outcome = "error" | "ok";
 
 
-// ====== Individual checks ======================================================================
+const utf8Decoder = new TextDecoder("utf8", { fatal: true });
 
-const NEWLINE_CHAR = "\n".charCodeAt(0);
+const checkFile = async (path: string, config: Config): Promise<Outcome> => {
+    const content = await fs.readFile(path);
 
-const checkUtf8 = (path: string, buf: Buffer): Outcome => {
-    if (!isUtf8(buf)) {
+    // We always make sure the file is UTF-8 so that checks can operate on a
+    // string instead of a byte buffer.
+    let str;
+    try {
+        str = utf8Decoder.decode(content);
+    } catch (e) {
         core.error(
             `File '${path}' is not encoded as UTF-8`,
             { file: path, title: "Not UTF-8 encoded" },
@@ -78,42 +59,11 @@ const checkUtf8 = (path: string, buf: Buffer): Outcome => {
         return "error";
     }
 
-    return "ok";
-};
-
-const checkSingleTrailingNewline = (path: string, buf: Buffer): Outcome => {
-    // Empty files are allowed to have no newlines.
-    if (buf.length === 0) {
-        return "ok";
-    }
-
-    const numNewlines = () => [...buf].filter(c => c === NEWLINE_CHAR).length;
-    const lastChar = buf[buf.length - 1];
-    if (lastChar !== NEWLINE_CHAR) {
-        core.error(
-            `File '${path}' does not end with a newline`,
-            { file: path, title: "Missing trailing newline", startLine: numNewlines() + 1 },
-        );
-        return "error";
-    }
-
-    // We want a _single_ trailing newline, if there is more than one byte in
-    // this file.
-    if (buf.length > 1 && buf[buf.length - 2] === NEWLINE_CHAR) {
-        core.error(
-            `File '${path}' contains more than one trailing newline`,
-            { file: path, title: "Extra trailing newline", startLine: numNewlines() + 1 },
-        );
-        return "error";
-    }
-
-    return "ok";
-};
-
-const checkUnixNewlines = (path: string, buf: Buffer): Outcome => {
-    const index = buf.indexOf("\r");
+    // Our second always-on/mandatory check is for unix line endings. Other
+    // checks can be way simpler if they can assume Unix line endings.
+    const index = str.indexOf("\r");
     if (index !== -1) {
-        const line = [...buf.subarray(0, index)].filter(c => c === NEWLINE_CHAR).length + 1;
+        const line = [...str.substring(0, index)].filter(c => c === "\n").length + 1;
         core.error(
             `File '${path}' contains '\\r' character (should use Unix line endings instead)`,
             { file: path, title: "'\\r' found", startLine: line },
@@ -121,8 +71,46 @@ const checkUnixNewlines = (path: string, buf: Buffer): Outcome => {
         return "error";
     }
 
+    const outcomes = [];
+    if (config.assertSingleTrailingNewline) {
+        outcomes.push(checkSingleTrailingNewline(path, str));
+    }
+
+    return outcomes.every(outcome => outcome === "ok") ? "ok" : "error";
+};
+
+
+// ====== Individual checks ======================================================================
+
+const checkSingleTrailingNewline = (path: string, content: string): Outcome => {
+    const error = (msg: string, line: number): "error" => {
+        core.error(msg, {
+            file: path,
+            title: "Violation: Single trailing newline",
+            startLine: line,
+        });
+        return "error";
+    }
+
+    // Empty files are allowed to have no newlines.
+    if (content.length === 0) {
+        return "ok";
+    }
+
+    const numNewlines = () => [...content].filter(c => c === "\n").length;
+    if (content[content.length - 1] !== "\n") {
+        return error(`File '${path}' does not end with a newline`, numNewlines() + 1);
+    }
+
+    // We want a _single_ trailing newline, if there is more than one byte in
+    // this file.
+    if (content.length > 1 && content[content.length - 2] === "\n") {
+        return error(`File '${path}' contains more than one trailing newline`, numNewlines() + 1);
+    }
+
     return "ok";
 };
+
 
 // ====== Calling entry point ====================================================================
 
