@@ -1,0 +1,6 @@
+foo:
+  good space
+	badtab
+bar
+some tab 	 in the middle
+uff
