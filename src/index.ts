@@ -31,10 +31,12 @@ const main = async () => {
 class Config {
     files: string[];
     assertSingleTrailingNewline: boolean;
+    assertNoTrailingWhitespace: boolean;
 
     constructor() {
         this.files = core.getMultilineInput("files");
         this.assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
+        this.assertNoTrailingWhitespace = core.getBooleanInput("assert_no_trailing_whitespace");
     }
 }
 
@@ -75,6 +77,9 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
     if (config.assertSingleTrailingNewline) {
         outcomes.push(checkSingleTrailingNewline(path, str));
     }
+    if (config.assertNoTrailingWhitespace) {
+        outcomes.push(checkTrailingWhitespace(path, str));
+    }
 
     return outcomes.every(outcome => outcome === "ok") ? "ok" : "error";
 };
@@ -109,6 +114,18 @@ const checkSingleTrailingNewline = (path: string, content: string): Outcome => {
     }
 
     return "ok";
+};
+
+const checkTrailingWhitespace = (path: string, content: string): Outcome => {
+    let error = false;
+    content.split("\n").forEach((line, i) => {
+        if (line.length !== line.trimEnd().length) {
+            core.error("Line contains trailing whitespace", { file: path, startLine: i + 1 });
+            error = true;
+        }
+    });
+
+    return error ? "error": "ok";
 };
 
 
