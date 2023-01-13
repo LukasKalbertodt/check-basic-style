@@ -34,6 +34,7 @@ class Config {
     assertNoTrailingWhitespace: boolean;
     maxLineLen: number;
     allowLongLinesWithUrls: boolean;
+    disallowTabs: boolean;
 
     constructor() {
         this.files = core.getMultilineInput("files");
@@ -41,6 +42,7 @@ class Config {
         this.assertNoTrailingWhitespace = core.getBooleanInput("assert_no_trailing_whitespace");
         this.maxLineLen = Number(core.getInput("max_line_len") || 100);
         this.allowLongLinesWithUrls = core.getBooleanInput("allow_long_lines_with_urls");
+        this.disallowTabs = core.getBooleanInput("disallow_tabs");
     }
 }
 
@@ -102,6 +104,9 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
         outcomes.push(
             checkLineLength(str, config.maxLineLen, config.allowLongLinesWithUrls, reportError)
         );
+    }
+    if (config.disallowTabs) {
+        outcomes.push(checkTabs(str, reportError));
     }
 
     return outcomes.every(outcome => outcome === "ok") ? "ok" : "error";
@@ -180,6 +185,22 @@ const checkLineLength = (
 
     return outcome;
 };
+
+const checkTabs = (content: string, error: ReportError): Outcome => {
+    let outcome: Outcome = "ok";
+    content.split("\n").forEach((line, i) => {
+        if (line.includes("\t")) {
+            error(
+                "Tab character found",
+                "Tab characters ('\\t') are not allowed, indent with spaces instead",
+                i + 1,
+            );
+            outcome = "error";
+        }
+    });
+
+    return outcome;
+}
 
 
 // ====== Calling entry point ====================================================================

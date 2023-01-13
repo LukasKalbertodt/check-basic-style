@@ -25,6 +25,10 @@ inputs:
       common cases.
     required: false
     default: "true"
+  disallow_tabs:
+    description: Disallow any tab characters ('\t') anywhere
+    required: false
+    default: "true"
 
 runs:
   using: "node16"
