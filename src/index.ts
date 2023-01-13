@@ -32,11 +32,15 @@ class Config {
     files: string[];
     assertSingleTrailingNewline: boolean;
     assertNoTrailingWhitespace: boolean;
+    maxLineLen: number;
+    allowLongLinesWithUrls: boolean;
 
     constructor() {
         this.files = core.getMultilineInput("files");
         this.assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
         this.assertNoTrailingWhitespace = core.getBooleanInput("assert_no_trailing_whitespace");
+        this.maxLineLen = Number(core.getInput("max_line_len") || 100);
+        this.allowLongLinesWithUrls = core.getBooleanInput("allow_long_lines_with_urls");
     }
 }
 
@@ -94,6 +98,11 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
     if (config.assertNoTrailingWhitespace) {
         outcomes.push(checkTrailingWhitespace(str, reportError));
     }
+    if (config.maxLineLen != -1) {
+        outcomes.push(
+            checkLineLength(str, config.maxLineLen, config.allowLongLinesWithUrls, reportError)
+        );
+    }
 
     return outcomes.every(outcome => outcome === "ok") ? "ok" : "error";
 };
@@ -134,6 +143,35 @@ const checkTrailingWhitespace = (content: string, error: ReportError): Outcome =
             error(
                 "Line with trailing whitespace",
                 "Line ends with whitespace characters which should be removed",
+                i + 1,
+            );
+            outcome = "error";
+        }
+    });
+
+    return outcome;
+};
+
+const checkLineLength = (
+    content: string,
+    limit: number,
+    allowUrls: boolean,
+    error: ReportError,
+): Outcome => {
+    let outcome: Outcome = "ok";
+    content.split("\n").forEach((line, i) => {
+        // This counts the number of Unicode code points.
+        const len = [...line].length;
+
+        // This is obviously not a spec-complient URL detector. This is just
+        // a rough approximation.
+        const tooLong = len > limit
+            && !(allowUrls && /(http|ftp|https):\/\/[\w-]+(\.[\w-]+)+/.test(line));
+
+        if (tooLong) {
+            error(
+                "Line too long",
+                `Line exceeds maximum length of ${limit} (it's ${len} Unicode codepoints long)`,
                 i + 1,
             );
             outcome = "error";

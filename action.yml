@@ -13,6 +13,18 @@ inputs:
     description: "Make sure there is no whitespace at the very end of a line"
     required: false
     default: "true"
+  max_line_len:
+    description: >
+      The maximum number of Unicode code points a line may have. Set to -1 to disable check.
+    required: false
+    default: "100"
+  allow_long_lines_with_urls:
+    description: >
+      Lines longer than 'max_line_len' are allowed if they contain something
+      that looks like a "common" URL. Not all of URL syntax is allowed, just
+      common cases.
+    required: false
+    default: "true"
 
 runs:
   using: "node16"
