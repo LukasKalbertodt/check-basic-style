@@ -42,10 +42,27 @@ class Config {
 
 type Outcome = "error" | "ok";
 
+type ReportError = (title: string, note: string, line?: number) => "error";
+
 
 const utf8Decoder = new TextDecoder("utf8", { fatal: true });
 
 const checkFile = async (path: string, config: Config): Promise<Outcome> => {
+    const reportError: ReportError = (msg, note, line) => {
+        core.error(note, {
+            file: path,
+            title: msg,
+            startLine: line,
+        });
+
+        // We print an additional error to the terminal so that the action log
+        // contains all necessary information without forcing us to put
+        // superfluous information in the annotation text.
+        console.error(`Problem in '${path}${line == null ? "" : `:${line}`}': ${msg} (${note})`);
+
+        return "error";
+    };
+
     const content = await fs.readFile(path);
 
     // We always make sure the file is UTF-8 so that checks can operate on a
@@ -54,11 +71,7 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
     try {
         str = utf8Decoder.decode(content);
     } catch (e) {
-        core.error(
-            `File '${path}' is not encoded as UTF-8`,
-            { file: path, title: "Not UTF-8 encoded" },
-        );
-        return "error";
+        return reportError("Not UTF-8 encoded", "File is not encoded as valid UTF-8");
     }
 
     // Our second always-on/mandatory check is for unix line endings. Other
@@ -66,19 +79,20 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
     const index = str.indexOf("\r");
     if (index !== -1) {
         const line = [...str.substring(0, index)].filter(c => c === "\n").length + 1;
-        core.error(
-            `File '${path}' contains '\\r' character (should use Unix line endings instead)`,
-            { file: path, title: "'\\r' found", startLine: line },
+        return reportError(
+            "Non-Unix line ending ('\\r') found",
+            "'\\r' character found, should only use Unix line endings ('\\n') instead",
+            line,
         );
-        return "error";
     }
+
 
     const outcomes = [];
     if (config.assertSingleTrailingNewline) {
-        outcomes.push(checkSingleTrailingNewline(path, str));
+        outcomes.push(checkSingleTrailingNewline(str, reportError));
     }
     if (config.assertNoTrailingWhitespace) {
-        outcomes.push(checkTrailingWhitespace(path, str));
+        outcomes.push(checkTrailingWhitespace(str, reportError));
     }
 
     return outcomes.every(outcome => outcome === "ok") ? "ok" : "error";
@@ -87,16 +101,7 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
 
 // ====== Individual checks ======================================================================
 
-const checkSingleTrailingNewline = (path: string, content: string): Outcome => {
-    const error = (msg: string, line: number): "error" => {
-        core.error(msg, {
-            file: path,
-            title: "Violation: Single trailing newline",
-            startLine: line,
-        });
-        return "error";
-    }
-
+const checkSingleTrailingNewline = (content: string, error: ReportError): Outcome => {
     // Empty files are allowed to have no newlines.
     if (content.length === 0) {
         return "ok";
@@ -104,28 +109,38 @@ const checkSingleTrailingNewline = (path: string, content: string): Outcome => {
 
     const numNewlines = () => [...content].filter(c => c === "\n").length;
     if (content[content.length - 1] !== "\n") {
-        return error(`File '${path}' does not end with a newline`, numNewlines() + 1);
+        return error(`Missing trailing newline`,
+            "File does not end with newline",
+            numNewlines() + 1,
+        );
     }
 
     // We want a _single_ trailing newline, if there is more than one byte in
     // this file.
     if (content.length > 1 && content[content.length - 2] === "\n") {
-        return error(`File '${path}' contains more than one trailing newline`, numNewlines() + 1);
+        return error("Multiple trailing newlines",
+            "File contains more than one newline at the end",
+            numNewlines() + 1,
+        );
     }
 
     return "ok";
 };
 
-const checkTrailingWhitespace = (path: string, content: string): Outcome => {
-    let error = false;
+const checkTrailingWhitespace = (content: string, error: ReportError): Outcome => {
+    let outcome: Outcome = "ok";
     content.split("\n").forEach((line, i) => {
         if (line.length !== line.trimEnd().length) {
-            core.error("Line contains trailing whitespace", { file: path, startLine: i + 1 });
-            error = true;
+            error(
+                "Line with trailing whitespace",
+                "Line ends with whitespace characters which should be removed",
+                i + 1,
+            );
+            outcome = "error";
         }
     });
 
-    return error ? "error": "ok";
+    return outcome;
 };
 
 
