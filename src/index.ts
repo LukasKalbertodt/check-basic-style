@@ -17,14 +17,27 @@ const main = async () => {
     core.debug(`Will check these files: \n${Array.from(paths).map(p => `- ${p}`).join("\n")}`);
 
     // Run check for each path.
-    let errors = false;
+    const filesWithProblems = [];
     for (const path of paths) {
         const outcome = await checkFile(path, config);
-        errors ||= outcome === "error";
+        if (outcome === "error") {
+            filesWithProblems.push(path);
+        }
     }
 
-    if (errors) {
+    const heading = "Basic style check results"
+    if (filesWithProblems.length === 0) {
+        await core.summary
+            .addHeading(heading)
+            .addRaw("✅ All files passed all tests!")
+            .write();
+    } else {
         core.setFailed("Some problems were found");
+        await core.summary
+            .addHeading(heading)
+            .addRaw("❌ Problems were found in these files:")
+            .addList(filesWithProblems)
+            .write();
     }
 };
 
