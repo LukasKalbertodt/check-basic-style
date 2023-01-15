@@ -11,8 +11,6 @@ jobs:
         uses: ./
         with:
           files: |
-            package.json
-            action.yml
-            tsconfig.json
-            src/*
+            *
+            src/**
             .github/**

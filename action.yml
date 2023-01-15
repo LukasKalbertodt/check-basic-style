@@ -5,6 +5,12 @@ inputs:
   files:
     description: "List of files to check. Supports wildcards. If not set, defaults to checking TODO"
     required: false
+  check_generated_files:
+    description: >
+      By default, some files like 'Cargo.lock', 'package-lock.json', ... are not
+      checked. Setting this to `true` disables this ignoring.
+    required: false
+    default: false
   assert_single_trailing_newline:
     description: "Make sure files end with a single trailing newline"
     required: false
