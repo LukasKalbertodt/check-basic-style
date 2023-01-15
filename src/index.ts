@@ -53,20 +53,20 @@ const IGNORED_FILES = ["Cargo.lock", "package-lock.json", "yarn.lock"];
 class Config {
     files: string[];
     checkGeneratedFiles: boolean;
-    assertSingleTrailingNewline: boolean;
-    assertNoTrailingWhitespace: boolean;
+    singleTrailingNewline: boolean;
+    noTrailingWhitespace: boolean;
     maxLineLen: number;
     allowLongLinesWithUrls: boolean;
-    disallowTabs: boolean;
+    noTabs: boolean;
 
     constructor() {
         this.files = core.getMultilineInput("files");
         this.checkGeneratedFiles = core.getBooleanInput("check_generated_files");
-        this.assertSingleTrailingNewline = core.getBooleanInput("assert_single_trailing_newline");
-        this.assertNoTrailingWhitespace = core.getBooleanInput("assert_no_trailing_whitespace");
+        this.singleTrailingNewline = core.getBooleanInput("single_trailing_newline");
+        this.noTrailingWhitespace = core.getBooleanInput("no_trailing_whitespace");
         this.maxLineLen = Number(core.getInput("max_line_len") || 100);
         this.allowLongLinesWithUrls = core.getBooleanInput("allow_long_lines_with_urls");
-        this.disallowTabs = core.getBooleanInput("disallow_tabs");
+        this.noTabs = core.getBooleanInput("no_tabs");
     }
 }
 
@@ -118,10 +118,10 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
 
 
     const outcomes = [];
-    if (config.assertSingleTrailingNewline) {
+    if (config.singleTrailingNewline) {
         outcomes.push(checkSingleTrailingNewline(str, reportError));
     }
-    if (config.assertNoTrailingWhitespace) {
+    if (config.noTrailingWhitespace) {
         outcomes.push(checkTrailingWhitespace(str, reportError));
     }
     if (config.maxLineLen != -1) {
@@ -129,7 +129,7 @@ const checkFile = async (path: string, config: Config): Promise<Outcome> => {
             checkLineLength(str, config.maxLineLen, config.allowLongLinesWithUrls, reportError)
         );
     }
-    if (config.disallowTabs) {
+    if (config.noTabs) {
         outcomes.push(checkTabs(str, reportError));
     }
 

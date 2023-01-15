@@ -14,11 +14,11 @@ inputs:
       checked. Setting this to `true` disables this ignoring.
     required: false
     default: false
-  assert_single_trailing_newline:
+  single_trailing_newline:
     description: "Make sure files end with a single trailing newline"
     required: false
     default: "true"
-  assert_no_trailing_whitespace:
+  no_trailing_whitespace:
     description: "Make sure there is no whitespace at the very end of a line"
     required: false
     default: "true"
@@ -34,7 +34,7 @@ inputs:
       common cases.
     required: false
     default: "true"
-  disallow_tabs:
+  no_tabs:
     description: Disallow any tab characters ('\t') anywhere
     required: false
     default: "true"
