@@ -1,6 +1,8 @@
-name: "Check basic file properties"
-description: "Check basic properties like files being UTF-8, a max line length,"
+name: "Check basic style"
+description: >
+  Check basic file properties like UTF-8 encoding, trailing whitespace, a max line length, ...
 author: "LukasKalbertodt"
+
 inputs:
   files:
     description: >
