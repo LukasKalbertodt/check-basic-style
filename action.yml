@@ -3,8 +3,11 @@ description: "Check basic properties like files being UTF-8, a max line length,"
 author: "LukasKalbertodt"
 inputs:
   files:
-    description: "List of files to check. Supports wildcards. If not set, defaults to checking TODO"
+    description: >
+      List of files to check. Supports wildcards. For more information on the
+      allowed patterns, see: https://www.npmjs.com/package/glob
     required: false
+    default: "**"
   check_generated_files:
     description: >
       By default, some files like 'Cargo.lock', 'package-lock.json', ... are not
