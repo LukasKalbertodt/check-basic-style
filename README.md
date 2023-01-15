@@ -12,6 +12,10 @@ Small action to make sure all files satisfy very basic properties:
 The UTF-8 and `\n` line-endings checks are mandatory and cannot be disabled.
 Everything else can be disabled/configured.
 
+This action supports Markdown summaries and annotations:
+
+![Showing an GH annotation on a pull request on a long line, complaining that the line is too long](.github/readme-image-annotations.png)
+
 **Note**:
 This is an action tailored to my needs and I specifically developed this for use in my own projects.
 If this is useful to you: great!
@@ -27,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: LukasKalbertodt/check-basic-style@v0.1.0
+    - uses: LukasKalbertodt/check-basic-style@v0.1
 ```
 
 You can configure this action via inputs.
@@ -35,7 +39,7 @@ See [`action.yml`](./action.yml) for information on all inputs.
 
 ```yaml
 # ...
-    - uses: LukasKalbertodt/check-basic-style@v0.1.0
+    - uses: LukasKalbertodt/check-basic-style@v0.1
       with:
         files: |
           *

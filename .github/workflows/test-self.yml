@@ -11,6 +11,6 @@ jobs:
         uses: ./
         with:
           files: |
-            *
+            !(*.md)
             src/**
-            .github/**
+            .github/workflows/*
