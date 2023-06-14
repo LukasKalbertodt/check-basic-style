@@ -1,0 +1,10 @@
+#!/bin/sh
+
+INPUT_FILES="$1" \
+    INPUT_CHECK_GENERATED_FILES=false \
+    INPUT_SINGLE_TRAILING_NEWLINE=true \
+    INPUT_NO_TRAILING_WHITESPACE=true \
+    INPUT_MAX_LINE_LEN=100 \
+    INPUT_ALLOW_LONG_LINES_WITH_URLS=true \
+    INPUT_NO_TABS=true \
+    node dist/index.js
